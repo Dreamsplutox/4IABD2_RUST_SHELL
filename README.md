@@ -1,5 +1,5 @@
 # 4IABD2_RUST_SHELL
-
+Nathanaël NEZONDET-RENAUD, Arnaud SIMON
 # 1 Révision de Rust et Processus
 1) En Rust, les références servent à accéder à des ressources via leur adresse dans la mémoire, un peu comme les pointeurs en C
 2) Rust est compilé nativement, il n'y a pas de JVM
