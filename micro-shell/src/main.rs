@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, id};
 use std::vec::Vec;
 use std::error::Error;
 use std::io::prelude::*;
@@ -59,13 +59,16 @@ fn main() -> std::io::Result<()>{
         } // STDOUT unlocked
         
         
-        /// Récupération de l'entrée utilisateur
-        /// 
+        // Récupération de l'entrée utilisateur
         let mut user_input = String::with_capacity(256);
         // On prends un référence mutable
         stdin.read_line(&mut user_input)?;
         let user_input = user_input.trim_end();
         
+        // Gestion de la sortie 'propre' pour éviter un warning :)
+        if user_input == "exit" {
+            break;
+        }
 
         // Récupération des éléments entrés dans un vecteur
         let mut i = 0;
@@ -76,8 +79,7 @@ fn main() -> std::io::Result<()>{
         let mut begin_args = 0;
         let mut end_args = 0;
 
-        /// Remplissage de notre structure
-        /// 
+        // Remplissage de notre structure
         for token in user_input.split_whitespace(){
             words.push(token);
             //println!("vec {} {}",i,token);
@@ -109,42 +111,40 @@ fn main() -> std::io::Result<()>{
         }else{
             cmds.push(Cmd::new(name ,begin_args, end_args+1));  
         }
-        
-        
-        //println!("words : {:?}", words);
 
-        /// Après avoir créé les différentes structures, on veut les exécuter
+        // Après avoir créé les différentes structures, on veut les exécuter
 
-        let mut begin = true;
-
-        let command = Command::new(words[cmds[0].name])
+        println!("command = {}", words[cmds[0].name]);
+        let mut command = Command::new(words[cmds[0].name])
                 .args(&words[cmds[0].begin_args..cmds[0].end_args])
                 .stdout(Stdio::piped())
                 .spawn()
-                .expect("I was pancaked while trying to launch ls.");
+                .expect("I was stopped when I tried to run the first command");
+
+        //println!("My pid is {}", id());
+        
 
         
-        /// STDOUT de notre commande n°1 ==> itération à travers les commandes suivantes        
+        // STDOUT de notre commande n°1 ==> itération à travers les commandes suivantes        
 
+        
         for cmd in &cmds[1..]{
             // Check des variables
             //println!("cmd : {}  {:?}", words[cmd.name], &words[cmd.begin_args..cmd.end_args]);
             //println!("cmd : {}, {}, {}", cmd.name, cmd.begin_args, cmd.end_args);
              
             // Stdio::piped() -> type pour representer une entrée/sortie standard qui sera un tube.
-            let cmd_stdout = Stdio::from(command.stdout.expect("Something wrong with ls stdin"));
+            let cmd_stdout = Stdio::from(command.stdout.expect("Problem when getting stdout of previous cmd"));
 
-            /// ERROR : ;-( , nous voulons récupérer la stdout de notre première commande pour l'utiliser
-            ///  en tant que stdin des suivantes mais nous avons une erreur (moved value ==> borrow)
-            
-            let command = Command::new(words[cmd.name])
+            command = Command::new(words[cmd.name])
             .args(&words[cmd.begin_args..cmd.end_args])
             .stdin(cmd_stdout)
             .stdout(Stdio::piped())
             .spawn()
-            .expect("Whopsie! wc failled to launch");   
-            
+            .expect("Error when launching piped cmd");
+             
         }
+        
       
         //-----------------------//
         // Résultat de la commande //
@@ -152,9 +152,9 @@ fn main() -> std::io::Result<()>{
         
         let mut s = String::new();
         match command.stdout.unwrap().read_to_string(&mut s) {
-            Err(why) => println!("couldn't read wc stdout: {}",
+            Err(why) => println!("couldn't read command stdout: {}",
                             why.description()),
-            Ok(_) => print!("wc responded with:\n{}", s),
+            Ok(_) => print!("command responded with:\n{}", s),
         }
         
 
